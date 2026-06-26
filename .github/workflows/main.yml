@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -27,37 +27,13 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Download Gradle wrapper files
-        run: |
-          mkdir -p android/gradle/wrapper
-          curl -o android/gradlew \
-            https://raw.githubusercontent.com/facebook/react-native/v0.73.4/packages/react-native/template/android/gradlew
-          curl -o android/gradle/wrapper/gradle-wrapper.jar \
-            https://raw.githubusercontent.com/facebook/react-native/v0.73.4/packages/react-native/template/android/gradle/wrapper/gradle-wrapper.jar
-          # Pin to Gradle 8.3 — the version RN 0.73 targets and stable on Ubuntu runners
-          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-bin.zip
-          networkTimeout=10000
-          validateDistributionUrl=true
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          EOF
-          chmod +x android/gradlew
-
-      - name: Disable Gradle native services (fixes libnative-platform.so)
-        run: |
-          echo "org.gradle.native=false" >> android/gradle.properties
-          echo "org.gradle.daemon=false"  >> android/gradle.properties
-
       - name: Build debug APK
         run: |
           cd android
+          chmod +x gradlew
           ./gradlew assembleDebug \
             --no-daemon \
             --no-build-cache \
-            -Dorg.gradle.native=false \
             -Dfile.encoding=UTF-8
 
       - name: Upload APK artifact
@@ -66,3 +42,4 @@ jobs:
           name: SpinVault-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
+ 
