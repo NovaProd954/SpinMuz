@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ── Permissions ─────────────────────────────────────────────────── -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Notification listener is user-granted in Settings, not a manifest permission -->
+
+    <application
+        android:name=".MainApplication"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:allowBackup="false"
+        android:theme="@style/AppTheme"
+        android:supportsRtl="true">
+
+        <!-- ── Main Activity ──────────────────────────────────────────── -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Deep link for widget "Open App" button -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="spinvault" android:host="nowplaying" />
+            </intent-filter>
+        </activity>
+
+        <!-- ── Notification Listener Service (for media session access) ── -->
+        <service
+            android:name=".MediaListenerService"
+            android:exported="false"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- ── AppWidget Receiver (Glance) ───────────────────────────── -->
+        <receiver
+            android:name=".widget.MusicWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/music_widget_info" />
+        </receiver>
+
+        <!-- ── Widget command BroadcastReceiver ─────────────────────── -->
+        <receiver
+            android:name=".widget.WidgetUpdateService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.spinvault.widget.PLAY" />
+                <action android:name="com.spinvault.widget.PAUSE" />
+                <action android:name="com.spinvault.widget.SKIP_NEXT" />
+                <action android:name="com.spinvault.widget.SKIP_PREVIOUS" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+</manifest>
