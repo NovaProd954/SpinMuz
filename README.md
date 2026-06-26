@@ -1,4 +1,4 @@
-# SpinVault 🎵
+# SpinMuz 🎵
 
 > A skeuomorphic vinyl record music player for Android — built with React Native + Jetpack Compose AppWidget.
 
