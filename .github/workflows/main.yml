@@ -27,25 +27,38 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Generate gradlew via React Native template
+      - name: Download Gradle wrapper files
         run: |
-          cd android
-          gradle wrapper --gradle-version=8.6 --distribution-type=bin
-        env:
-          GRADLE_USER_HOME: /root/.gradle
+          mkdir -p android/gradle/wrapper
+          curl -o android/gradlew \
+            https://raw.githubusercontent.com/facebook/react-native/v0.73.4/packages/react-native/template/android/gradlew
+          curl -o android/gradle/wrapper/gradle-wrapper.jar \
+            https://raw.githubusercontent.com/facebook/react-native/v0.73.4/packages/react-native/template/android/gradle/wrapper/gradle-wrapper.jar
+          # Pin to Gradle 8.3 — the version RN 0.73 targets and stable on Ubuntu runners
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-bin.zip
+          networkTimeout=10000
+          validateDistributionUrl=true
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+          chmod +x android/gradlew
 
-      - name: Install Gradle wrapper
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.6'
-
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
+      - name: Disable Gradle native services (fixes libnative-platform.so)
+        run: |
+          echo "org.gradle.native=false" >> android/gradle.properties
+          echo "org.gradle.daemon=false"  >> android/gradle.properties
 
       - name: Build debug APK
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon --no-build-cache
+          ./gradlew assembleDebug \
+            --no-daemon \
+            --no-build-cache \
+            -Dorg.gradle.native=false \
+            -Dfile.encoding=UTF-8
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
