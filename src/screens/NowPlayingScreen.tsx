@@ -1,37 +1,15 @@
-/**
- * NowPlayingScreen
- * ────────────────
- * The centrepiece skeuomorphic vinyl player screen.
- *
- * Layout (bottom-up):
- *   ┌──────────────────────────────────────────┐
- *   │  Dynamic gradient background             │
- *   │                                          │
- *   │       ╭──── Tonearm (top-right) ────╮   │
- *   │       │    ╭──────────────────╮     │   │
- *   │       │    │   VinylDisk      │     │   │
- *   │       │    │  (spinning art)  │     │   │
- *   │       │    ╰──────────────────╯     │   │
- *   │       ╰────────────────────────────╯   │
- *   │                                          │
- *   │       Song title / Artist / Album        │
- *   │       ━━━━━━━━━━━━━━━━━━ progress       │
- *   │       ⏮   ▶/⏸   ⏭                       │
- *   └──────────────────────────────────────────┘
- */
-
-import React, {useCallback} from 'react';
+import React, {useEffect, useMemo} from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  SafeAreaView,
+  Linking,
   StatusBar,
-  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
 } from 'react-native';
 import {useMediaSession} from '../hooks/useMediaSession';
-import {usePalette, DEFAULT_PALETTE} from '../hooks/usePalette';
+import {DEFAULT_PALETTE, usePalette} from '../hooks/usePalette';
 import {useVinylAnimation} from '../hooks/useVinylAnimation';
 import GradientBackground from '../components/GradientBackground';
 import VinylDisk from '../components/VinylDisk';
@@ -39,55 +17,78 @@ import Tonearm from '../components/Tonearm';
 import SongInfo from '../components/SongInfo';
 import ProgressBar from '../components/ProgressBar';
 import PlayerControls from '../components/PlayerControls';
+import mediaSessionBridge from '../services/MediaSessionBridge';
+import {PlaybackStatus} from '../types';
 import {hexWithAlpha} from '../utils/colorUtils';
+import {computeStageLayout} from '../utils/stageLayout';
 
-// ─── Turntable platter sizing ─────────────────────────────────────────────────
-
-const VINYL_SIZE = 284;
-const TONEARM_WIDTH = 200;
-// The tonearm SVG pivot sits at x=180 in its own 220-wide viewBox.
-// We position the arm so its pivot aligns with the record's right shoulder.
-const TONEARM_OFFSET_X = VINYL_SIZE * 0.5 - 10; // overlap vinyl right side
-const TONEARM_OFFSET_Y = -20; // sit above vinyl top
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
+const TOP_INSET = StatusBar.currentHeight ?? 0;
 
 const NowPlayingScreen: React.FC = () => {
-  const {track, playback, hasPermission, isLoading, requestPermission, sendCommand} =
-    useMediaSession();
+  const {width, height} = useWindowDimensions();
+  const layout = useMemo(
+    () => computeStageLayout(width, height),
+    [width, height],
+  );
 
+  const {
+    track,
+    playback,
+    hasPermission,
+    isLoading,
+    requestPermission,
+    sendCommand,
+  } = useMediaSession();
   const {palette} = usePalette(track.artworkUrl);
+
+  const armDown =
+    playback.status !== PlaybackStatus.None &&
+    playback.status !== PlaybackStatus.Stopped;
   const {vinylStyle, tonearmStyle} = useVinylAnimation(
     playback.isPlaying,
     playback.progress,
+    armDown,
+    layout,
   );
 
-  const handlePlayPause = useCallback(() => {
-    sendCommand(playback.isPlaying ? 'pause' : 'play');
-  }, [playback.isPlaying, sendCommand]);
-
-  // ── Permission gate ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (hasPermission) {
+      mediaSessionBridge.updateWidgetColors(palette.darkMuted, palette.vibrant);
+    }
+  }, [hasPermission, palette.darkMuted, palette.vibrant]);
 
   if (!hasPermission) {
     return (
       <GradientBackground palette={DEFAULT_PALETTE}>
-        <SafeAreaView style={styles.permissionScreen}>
-          <Text style={styles.permTitle}>SpinVault</Text>
+        <StatusBar
+          translucent
+          backgroundColor="transparent"
+          barStyle="light-content"
+        />
+        <View style={styles.permissionScreen}>
+          <Text style={styles.permTitle}>SpinMuz</Text>
           <Text style={styles.permBody}>
-            SpinVault needs Notification Access to read the active media session
-            from your music app.
+            SpinMuz needs Notification Access to read what your music app is
+            playing.
           </Text>
           <TouchableOpacity
             style={[styles.permBtn, {backgroundColor: DEFAULT_PALETTE.vibrant}]}
             onPress={requestPermission}>
             <Text style={styles.permBtnText}>Grant Access</Text>
           </TouchableOpacity>
-        </SafeAreaView>
+          <Text style={styles.permHint}>
+            Installed from an APK and the switch is greyed out? Open App info,
+            tap the ⋮ menu, choose “Allow restricted settings”, then try again.
+          </Text>
+          <TouchableOpacity
+            style={styles.permLink}
+            onPress={() => Linking.openSettings()}>
+            <Text style={styles.permLinkText}>Open App info</Text>
+          </TouchableOpacity>
+        </View>
       </GradientBackground>
     );
   }
-
-  // ── Main player UI ────────────────────────────────────────────────────────
 
   return (
     <GradientBackground palette={palette}>
@@ -96,56 +97,58 @@ const NowPlayingScreen: React.FC = () => {
         backgroundColor="transparent"
         barStyle="light-content"
       />
-      <SafeAreaView style={styles.safe}>
-
-        {/* ── Header ── */}
+      <View style={styles.safe}>
         <View style={styles.header}>
-          <Text style={[styles.appName, {color: hexWithAlpha(palette.onDarkVibrant, 0.6)}]}>
-            SpinVault
+          <Text
+            style={[
+              styles.appName,
+              {color: hexWithAlpha(palette.onDarkVibrant, 0.6)},
+            ]}>
+            SpinMuz
           </Text>
-          <View style={[styles.statusDot, {
-            backgroundColor: playback.isPlaying ? palette.vibrant : palette.muted,
-          }]} />
+          <View
+            style={[
+              styles.statusDot,
+              {
+                backgroundColor: playback.isPlaying
+                  ? palette.vibrant
+                  : palette.muted,
+              },
+            ]}
+          />
         </View>
 
-        {/* ── Turntable stage ── */}
-        <View style={styles.stage}>
-          {/* Platter shadow / mat */}
-          <View style={[styles.platterMat, {shadowColor: palette.darkVibrant}]}>
-
-            {/* Vinyl disk */}
+        <View style={{width: layout.width, height: layout.height}}>
+          <View
+            style={[
+              styles.platterMat,
+              {
+                left: layout.vinylLeft,
+                top: layout.vinylTop,
+                width: layout.vinyl,
+                height: layout.vinyl,
+                borderRadius: layout.vinyl / 2,
+                shadowColor: palette.darkVibrant,
+              },
+            ]}>
             <VinylDisk
-              size={VINYL_SIZE}
+              size={layout.vinyl}
               artworkUrl={track.artworkUrl}
               animatedStyle={vinylStyle}
               accentColor={palette.vibrant}
             />
-
-            {/* Tonearm — absolutely positioned over the right side of the record */}
-            <View
-              pointerEvents="none"
-              style={[
-                styles.tonearmWrapper,
-                {
-                  right: -TONEARM_OFFSET_X + TONEARM_WIDTH * 0.08,
-                  top: TONEARM_OFFSET_Y,
-                },
-              ]}>
-              <Tonearm
-                width={TONEARM_WIDTH}
-                animatedStyle={tonearmStyle}
-                accentColor={palette.lightVibrant}
-              />
-            </View>
           </View>
+          <Tonearm
+            layout={layout}
+            animatedStyle={tonearmStyle}
+            accentColor={palette.lightVibrant}
+          />
         </View>
 
-        {/* ── Metadata ── */}
         <View style={styles.metaSection}>
           <SongInfo track={track} palette={palette} />
         </View>
 
-        {/* ── Progress ── */}
         <View style={styles.progressSection}>
           <ProgressBar
             progress={playback.progress}
@@ -155,7 +158,6 @@ const NowPlayingScreen: React.FC = () => {
           />
         </View>
 
-        {/* ── Controls ── */}
         <View style={styles.controlsSection}>
           <PlayerControls
             isPlaying={playback.isPlaying}
@@ -168,30 +170,50 @@ const NowPlayingScreen: React.FC = () => {
           />
         </View>
 
-        {/* ── Vinyl label texture footer ── */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, {color: hexWithAlpha(palette.onDarkVibrant, 0.3)}]}>
-            33⅓ RPM  ·  Stereo
+          <Text
+            style={[
+              styles.footerText,
+              {color: hexWithAlpha(palette.onDarkVibrant, 0.3)},
+            ]}>
+            33⅓ RPM · Stereo
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     </GradientBackground>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  safe: {flex: 1, paddingTop: StatusBar.currentHeight ?? 0},
-
-  // Permission gate
-  permissionScreen: {flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 20},
+  safe: {flex: 1, paddingTop: TOP_INSET},
+  permissionScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    gap: 20,
+  },
   permTitle: {fontSize: 32, fontWeight: '800', color: '#fff', letterSpacing: 1},
-  permBody:  {fontSize: 15, color: 'rgba(255,255,255,0.7)', textAlign: 'center', lineHeight: 22},
-  permBtn:   {paddingHorizontal: 32, paddingVertical: 14, borderRadius: 28},
+  permBody: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  permBtn: {paddingHorizontal: 32, paddingVertical: 14, borderRadius: 28},
   permBtnText: {color: '#fff', fontWeight: '700', fontSize: 16},
-
-  // Header
+  permHint: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  permLink: {paddingVertical: 8},
+  permLinkText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -199,30 +221,26 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
-  appName: {fontSize: 13, fontWeight: '600', letterSpacing: 3, textTransform: 'uppercase'},
+  appName: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+  },
   statusDot: {width: 7, height: 7, borderRadius: 4},
-
-  // Turntable stage
-  stage: {alignItems: 'center', justifyContent: 'center', paddingVertical: 8},
   platterMat: {
-    position: 'relative',
-    width: VINYL_SIZE,
-    height: VINYL_SIZE,
-    borderRadius: VINYL_SIZE / 2,
+    position: 'absolute',
+    backgroundColor: '#0b0b0b',
     elevation: 24,
     shadowOffset: {width: 0, height: 16},
     shadowOpacity: 0.7,
     shadowRadius: 32,
-    // Subtle turntable platter ring
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.06)',
   },
-  tonearmWrapper: {position: 'absolute'},
-
-  // Info & Controls
-  metaSection:    {marginTop: 24, alignItems: 'center'},
-  progressSection:{marginTop: 20, alignItems: 'center'},
-  controlsSection:{marginTop: 24, alignItems: 'center'},
+  metaSection: {marginTop: 0, alignItems: 'center'},
+  progressSection: {marginTop: 20, alignItems: 'center'},
+  controlsSection: {marginTop: 24, alignItems: 'center'},
   footer: {marginTop: 'auto', paddingBottom: 12, alignItems: 'center'},
   footerText: {fontSize: 11, letterSpacing: 2, fontVariant: ['tabular-nums']},
 });

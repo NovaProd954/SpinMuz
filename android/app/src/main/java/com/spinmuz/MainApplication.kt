@@ -1,4 +1,4 @@
-package com.spinvault
+package com.spinmuz
 
 import android.app.Application
 import com.facebook.react.PackageList
@@ -10,8 +10,7 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.soloader.SoLoader
-import com.spinvault.modules.MediaSessionPackage
-import com.spinvault.modules.PalettePackage
+import com.spinmuz.modules.SpinMuzPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -19,14 +18,13 @@ class MainApplication : Application(), ReactApplication {
         object : DefaultReactNativeHost(this) {
             override fun getPackages(): List<ReactPackage> =
                 PackageList(this).packages.apply {
-                    add(MediaSessionPackage())
-                    add(PalettePackage())
+                    add(SpinMuzPackage())
                 }
 
             override fun getJSMainModuleName(): String = "index"
             override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
             override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-            override val isHermesEnabled: Boolean  = BuildConfig.IS_HERMES_ENABLED
+            override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
         }
 
     override val reactHost: ReactHost

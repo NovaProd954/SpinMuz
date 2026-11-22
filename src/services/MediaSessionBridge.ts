@@ -18,10 +18,7 @@ import {WidgetCommand} from '../types';
 const {MediaSessionModule} = NativeModules;
 
 if (Platform.OS === 'android' && !MediaSessionModule) {
-  console.warn(
-    '[MediaSessionBridge] Native MediaSessionModule not found. ' +
-      'Ensure the module is linked and the APK is rebuilt.',
-  );
+  console.warn('[MediaSessionBridge] Native MediaSessionModule not found.');
 }
 
 // ─── Raw native event shapes ──────────────────────────────────────────────────
@@ -60,22 +57,26 @@ class MediaSessionBridge {
    * The app must have been granted Notification Access first.
    */
   async startListening(): Promise<boolean> {
-    if (!MediaSessionModule) return false;
+    if (!MediaSessionModule) {
+      return false;
+    }
     try {
       return await MediaSessionModule.startListening();
     } catch (e) {
-      console.error('[MediaSessionBridge] startListening error:', e);
+      console.warn('[MediaSessionBridge] startListening error:', e);
       return false;
     }
   }
 
   /** Stop listening and tear down callbacks. */
   async stopListening(): Promise<void> {
-    if (!MediaSessionModule) return;
+    if (!MediaSessionModule) {
+      return;
+    }
     try {
       await MediaSessionModule.stopListening();
     } catch (e) {
-      console.error('[MediaSessionBridge] stopListening error:', e);
+      console.warn('[MediaSessionBridge] stopListening error:', e);
     }
   }
 
@@ -84,7 +85,9 @@ class MediaSessionBridge {
    * Returns an unsubscribe function.
    */
   onMetadata(listener: MetadataListener): () => void {
-    if (!this.emitter) return () => {};
+    if (!this.emitter) {
+      return () => {};
+    }
     const sub = this.emitter.addListener('onMediaMetadata', listener);
     return () => sub.remove();
   }
@@ -94,7 +97,9 @@ class MediaSessionBridge {
    * Returns an unsubscribe function.
    */
   onPlaybackState(listener: PlaybackListener): () => void {
-    if (!this.emitter) return () => {};
+    if (!this.emitter) {
+      return () => {};
+    }
     const sub = this.emitter.addListener('onPlaybackState', listener);
     return () => sub.remove();
   }
@@ -103,11 +108,13 @@ class MediaSessionBridge {
    * Fire a transport control command at the active media session.
    */
   async sendCommand(command: WidgetCommand): Promise<boolean> {
-    if (!MediaSessionModule) return false;
+    if (!MediaSessionModule) {
+      return false;
+    }
     try {
       return await MediaSessionModule.sendCommand(command);
     } catch (e) {
-      console.error('[MediaSessionBridge] sendCommand error:', e);
+      console.warn('[MediaSessionBridge] sendCommand error:', e);
       return false;
     }
   }
@@ -116,7 +123,9 @@ class MediaSessionBridge {
    * Check whether Notification Listener access has been granted.
    */
   async hasNotificationAccess(): Promise<boolean> {
-    if (!MediaSessionModule) return false;
+    if (!MediaSessionModule) {
+      return false;
+    }
     try {
       return await MediaSessionModule.hasNotificationAccess();
     } catch {
@@ -128,12 +137,23 @@ class MediaSessionBridge {
    * Open the system Notification Access settings screen.
    */
   async requestNotificationAccess(): Promise<void> {
-    if (!MediaSessionModule) return;
+    if (!MediaSessionModule) {
+      return;
+    }
     try {
       await MediaSessionModule.requestNotificationAccess();
     } catch (e) {
-      console.error('[MediaSessionBridge] requestNotificationAccess error:', e);
+      console.warn('[MediaSessionBridge] requestNotificationAccess error:', e);
     }
+  }
+
+  async updateWidgetColors(background: string, accent: string): Promise<void> {
+    if (!MediaSessionModule) {
+      return;
+    }
+    try {
+      await MediaSessionModule.updateWidgetColors(background, accent);
+    } catch {}
   }
 }
 

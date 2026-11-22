@@ -14,7 +14,7 @@ import {MBSearchResult, MBRecording, MBRelease, TrackMetadata} from '../types';
 
 const MB_BASE = 'https://musicbrainz.org/ws/2';
 const CAA_BASE = 'https://coverartarchive.org';
-const USER_AGENT = 'SpinVault/1.0 (github.com/spinvault/spinvault)';
+const USER_AGENT = 'SpinMuz/1.0 (https://github.com/NovaProd954/SpinMuz)';
 
 // ─── Rate-limit queue (1 req / 1.1 s) ────────────────────────────────────────
 
@@ -48,7 +48,7 @@ class RateLimitedQueue {
     while (this.queue.length > 0) {
       const task = this.queue.shift()!;
       await task();
-      await new Promise(r => setTimeout(r, this.interval));
+      await new Promise<void>(r => setTimeout(r, this.interval));
     }
     this.running = false;
   }
@@ -68,7 +68,9 @@ class TTLCache<K, V> {
 
   get(key: K): V | undefined {
     const entry = this.store.get(key);
-    if (!entry) return undefined;
+    if (!entry) {
+      return undefined;
+    }
     if (Date.now() > entry.expiresAt) {
       this.store.delete(key);
       return undefined;
@@ -86,8 +88,12 @@ class TTLCache<K, V> {
 class MusicBrainzService {
   private readonly http: AxiosInstance;
   private readonly queue = new RateLimitedQueue(1100);
-  private readonly metaCache = new TTLCache<string, TrackMetadata>(10 * 60 * 1000);
-  private readonly artCache = new TTLCache<string, string | null>(10 * 60 * 1000);
+  private readonly metaCache = new TTLCache<string, TrackMetadata>(
+    10 * 60 * 1000,
+  );
+  private readonly artCache = new TTLCache<string, string | null>(
+    10 * 60 * 1000,
+  );
 
   constructor() {
     this.http = axios.create({
@@ -106,25 +112,44 @@ class MusicBrainzService {
    * Given a raw title + artist string (e.g. from MediaSession), resolve full
    * TrackMetadata including a Cover Art Archive artwork URL.
    */
-  async resolve(title: string, artist: string, album?: string): Promise<TrackMetadata> {
+  async resolve(
+    title: string,
+    artist: string,
+    album?: string,
+  ): Promise<TrackMetadata> {
     const cacheKey = `${title}::${artist}::${album ?? ''}`.toLowerCase();
     const cached = this.metaCache.get(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      return cached;
+    }
 
-    const recording = await this.searchRecording(title, artist, album);
+    const fallback: TrackMetadata = {
+      title,
+      artist,
+      album: album ?? '',
+      duration: 0,
+      artworkUrl: null,
+      mbid: null,
+      releaseMbid: null,
+    };
 
-    const artworkUrl = recording
-      ? await this.resolveArtwork(recording)
-      : null;
+    let recording: MBRecording | null;
+    try {
+      recording = await this.searchRecording(title, artist, album);
+    } catch {
+      return fallback;
+    }
+
+    const artwork = recording ? await this.resolveArtwork(recording) : null;
 
     const result: TrackMetadata = {
       title: recording?.title ?? title,
       artist: recording?.['artist-credit']?.[0]?.name ?? artist,
       album: recording?.releases?.[0]?.title ?? album ?? '',
       duration: 0,
-      artworkUrl,
+      artworkUrl: artwork?.url ?? null,
       mbid: recording?.id ?? null,
-      releaseMbid: recording?.releases?.[0]?.id ?? null,
+      releaseMbid: artwork?.releaseId ?? recording?.releases?.[0]?.id ?? null,
     };
 
     this.metaCache.set(cacheKey, result);
@@ -136,7 +161,9 @@ class MusicBrainzService {
    */
   async getArtworkByReleaseMbid(releaseMbid: string): Promise<string | null> {
     const cached = this.artCache.get(releaseMbid);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      return cached;
+    }
 
     const url = await this.fetchCoverArt(releaseMbid);
     this.artCache.set(releaseMbid, url);
@@ -151,81 +178,76 @@ class MusicBrainzService {
     album?: string,
   ): Promise<MBRecording | null> {
     const query = this.buildQuery(title, artist, album);
-    try {
-      const data = await this.queue.enqueue<MBSearchResult>(() =>
-        this.http
-          .get<MBSearchResult>('/recording', {
-            params: {
-              query,
-              limit: 5,
-              inc: 'releases+artist-credits',
-            },
-          })
-          .then(r => r.data),
-      );
+    const data = await this.queue.enqueue<MBSearchResult>(() =>
+      this.http
+        .get<MBSearchResult>('/recording', {
+          params: {query, limit: 5, fmt: 'json'},
+        })
+        .then(r => r.data),
+    );
 
-      if (!data.recordings?.length) return null;
-
-      // Sort by score and prefer recordings that have associated releases
-      const sorted = data.recordings
-        .filter(r => r.score > 50)
-        .sort((a, b) => {
-          const aHasRelease = (a.releases?.length ?? 0) > 0 ? 1 : 0;
-          const bHasRelease = (b.releases?.length ?? 0) > 0 ? 1 : 0;
-          if (bHasRelease !== aHasRelease) return bHasRelease - aHasRelease;
-          return b.score - a.score;
-        });
-
-      return sorted[0] ?? null;
-    } catch (e) {
-      console.warn('[MusicBrainz] Search failed:', e);
+    if (!data.recordings?.length) {
       return null;
     }
+
+    const sorted = data.recordings
+      .filter(r => r.score > 50)
+      .sort((a, b) => {
+        const aHasRelease = (a.releases?.length ?? 0) > 0 ? 1 : 0;
+        const bHasRelease = (b.releases?.length ?? 0) > 0 ? 1 : 0;
+        if (bHasRelease !== aHasRelease) {
+          return bHasRelease - aHasRelease;
+        }
+        return b.score - a.score;
+      });
+
+    return sorted[0] ?? null;
   }
 
   private buildQuery(title: string, artist: string, album?: string): string {
     // Escape Lucene special characters
-    const esc = (s: string) => s.replace(/[+\-&|!(){}[\]^"~*?:\\]/g, '\\$&');
+    const esc = (s: string) => s.replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, '\\$&');
     let q = `recording:"${esc(title)}" AND artist:"${esc(artist)}"`;
-    if (album) q += ` AND release:"${esc(album)}"`;
+    if (album) {
+      q += ` AND release:"${esc(album)}"`;
+    }
     return q;
   }
 
   // ── Cover Art Archive ─────────────────────────────────────────────────────
 
-  private async resolveArtwork(recording: MBRecording): Promise<string | null> {
-    // Find the best release (prefer one flagged as having artwork)
+  private async resolveArtwork(
+    recording: MBRecording,
+  ): Promise<{url: string; releaseId: string} | null> {
     const releases: MBRelease[] = recording.releases ?? [];
-    const withArt = releases.find(r => r['cover-art-archive']?.front === true);
-    const targetRelease = withArt ?? releases[0];
-    if (!targetRelease) return null;
+    const flagged = releases.filter(
+      r => r['cover-art-archive']?.front === true,
+    );
+    const candidates = [
+      ...flagged,
+      ...releases.filter(r => !flagged.includes(r)),
+    ].slice(0, 3);
 
-    return this.getArtworkByReleaseMbid(targetRelease.id);
+    for (const release of candidates) {
+      const url = await this.getArtworkByReleaseMbid(release.id);
+      if (url) {
+        return {url, releaseId: release.id};
+      }
+    }
+    return null;
   }
 
   private async fetchCoverArt(releaseMbid: string): Promise<string | null> {
-    // Cover Art Archive redirect endpoint — returns 307 to the actual CDN URL
-    // We use this deterministic URL directly (no rate limiting needed for CAA)
     const directUrl = `${CAA_BASE}/release/${releaseMbid}/front-500`;
-
     try {
-      // HEAD request to verify the image exists
       const resp = await axios.head(directUrl, {
-        timeout: 5000,
+        timeout: 6000,
         maxRedirects: 5,
         validateStatus: s => s < 400,
       });
-      if (resp.status < 400) return directUrl;
-      return null;
+      return resp.status < 400 ? directUrl : null;
     } catch {
-      // Fallback: try the release-group endpoint
-      try {
-        const fallback = `${CAA_BASE}/release-group/${releaseMbid}/front-500`;
-        await axios.head(fallback, {timeout: 5000, validateStatus: s => s < 400});
-        return fallback;
-      } catch {
-        return null;
-      }
+      return null;
     }
   }
 }

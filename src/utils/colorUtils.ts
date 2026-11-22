@@ -5,7 +5,9 @@
  */
 
 /** Parse a #RRGGBB or #RGB hex string to { r, g, b } */
-export function hexToRgb(hex: string): {r: number; g: number; b: number} | null {
+export function hexToRgb(
+  hex: string,
+): {r: number; g: number; b: number} | null {
   const clean = hex.replace('#', '');
   if (clean.length === 3) {
     const r = parseInt(clean[0] + clean[0], 16);
@@ -27,7 +29,11 @@ export function rgbToHex(r: number, g: number, b: number): string {
   return (
     '#' +
     [r, g, b]
-      .map(v => Math.min(255, Math.max(0, Math.round(v))).toString(16).padStart(2, '0'))
+      .map(v =>
+        Math.min(255, Math.max(0, Math.round(v)))
+          .toString(16)
+          .padStart(2, '0'),
+      )
       .join('')
   );
 }
@@ -35,7 +41,9 @@ export function rgbToHex(r: number, g: number, b: number): string {
 /** Darken a hex colour by `amount` (0–1) */
 export function darken(hex: string, amount: number): string {
   const rgb = hexToRgb(hex);
-  if (!rgb) return hex;
+  if (!rgb) {
+    return hex;
+  }
   return rgbToHex(
     rgb.r * (1 - amount),
     rgb.g * (1 - amount),
@@ -46,7 +54,9 @@ export function darken(hex: string, amount: number): string {
 /** Lighten a hex colour by `amount` (0–1) */
 export function lighten(hex: string, amount: number): string {
   const rgb = hexToRgb(hex);
-  if (!rgb) return hex;
+  if (!rgb) {
+    return hex;
+  }
   return rgbToHex(
     rgb.r + (255 - rgb.r) * amount,
     rgb.g + (255 - rgb.g) * amount,
@@ -57,19 +67,27 @@ export function lighten(hex: string, amount: number): string {
 /** Add alpha to a hex colour → rgba() string */
 export function hexWithAlpha(hex: string, alpha: number): string {
   const rgb = hexToRgb(hex);
-  if (!rgb) return hex;
+  if (!rgb) {
+    return hex;
+  }
   return `rgba(${rgb.r},${rgb.g},${rgb.b},${alpha})`;
 }
 
 /** Relative luminance per WCAG 2.1 */
 export function luminance(hex: string): number {
   const rgb = hexToRgb(hex);
-  if (!rgb) return 0;
+  if (!rgb) {
+    return 0;
+  }
   const toLinear = (c: number) => {
     const s = c / 255;
     return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
   };
-  return 0.2126 * toLinear(rgb.r) + 0.7152 * toLinear(rgb.g) + 0.0722 * toLinear(rgb.b);
+  return (
+    0.2126 * toLinear(rgb.r) +
+    0.7152 * toLinear(rgb.g) +
+    0.0722 * toLinear(rgb.b)
+  );
 }
 
 /** WCAG contrast ratio between two hex colours */
@@ -96,7 +114,9 @@ export function bestTextColor(
 export function lerpColor(hex1: string, hex2: string, t: number): string {
   const a = hexToRgb(hex1);
   const b = hexToRgb(hex2);
-  if (!a || !b) return hex1;
+  if (!a || !b) {
+    return hex1;
+  }
   return rgbToHex(
     a.r + (b.r - a.r) * t,
     a.g + (b.g - a.g) * t,
@@ -107,6 +127,8 @@ export function lerpColor(hex1: string, hex2: string, t: number): string {
 /** Convert hex to `rgb(r,g,b)` string */
 export function hexToRgbString(hex: string): string {
   const rgb = hexToRgb(hex);
-  if (!rgb) return 'rgb(0,0,0)';
+  if (!rgb) {
+    return 'rgb(0,0,0)';
+  }
   return `rgb(${rgb.r},${rgb.g},${rgb.b})`;
 }

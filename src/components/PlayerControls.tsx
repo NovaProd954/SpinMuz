@@ -1,6 +1,11 @@
 import React, {memo} from 'react';
-import {View, TouchableOpacity, StyleSheet, ActivityIndicator} from 'react-native';
-import Svg, {Path, Rect, Circle} from 'react-native-svg';
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+import Svg, {Path, Rect} from 'react-native-svg';
 import {PaletteColors} from '../types';
 
 interface PlayerControlsProps {
@@ -50,14 +55,19 @@ function SkipPrevIcon({color}: {color: string}) {
 }
 
 const PlayerControls: React.FC<PlayerControlsProps> = ({
-  isPlaying, isLoading, palette, onPlay, onPause, onPrevious, onNext,
+  isPlaying,
+  isLoading,
+  palette,
+  onPlay,
+  onPause,
+  onPrevious,
+  onNext,
 }) => {
   const fg = palette.onDarkVibrant;
   const accent = palette.vibrant;
 
   return (
     <View style={styles.row}>
-      {/* Previous */}
       <TouchableOpacity
         style={[styles.sideBtn, {borderColor: fg + '30'}]}
         onPress={onPrevious}
@@ -65,7 +75,6 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
         <SkipPrevIcon color={fg} />
       </TouchableOpacity>
 
-      {/* Play / Pause — large centre button */}
       <TouchableOpacity
         style={[styles.mainBtn, {backgroundColor: accent, shadowColor: accent}]}
         onPress={isPlaying ? onPause : onPlay}
@@ -79,7 +88,6 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
         )}
       </TouchableOpacity>
 
-      {/* Next */}
       <TouchableOpacity
         style={[styles.sideBtn, {borderColor: fg + '30'}]}
         onPress={onNext}

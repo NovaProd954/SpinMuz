@@ -13,7 +13,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="SpinVault"
+        android:text="SpinMuz"
         android:textColor="#99FFFFFF"
         android:textSize="11sp"
         android:letterSpacing="0.15" />

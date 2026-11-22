@@ -1,20 +1,12 @@
-// ─── Media Metadata ──────────────────────────────────────────────────────────
-
 export interface TrackMetadata {
   title: string;
   artist: string;
   album: string;
-  /** Track duration in milliseconds */
   duration: number;
-  /** Resolved Cover Art Archive URL (or local placeholder) */
   artworkUrl: string | null;
-  /** MusicBrainz recording ID */
   mbid: string | null;
-  /** MusicBrainz release (album) ID */
   releaseMbid: string | null;
 }
-
-// ─── Playback State ───────────────────────────────────────────────────────────
 
 export enum PlaybackStatus {
   None = 0,
@@ -26,23 +18,18 @@ export enum PlaybackStatus {
   Buffering = 6,
   Error = 7,
   Connecting = 8,
-  Skipping = 9,
-  SkippingToPrevious = 10,
-  SkippingToNext = 11,
+  SkippingToPrevious = 9,
+  SkippingToNext = 10,
+  SkippingToQueueItem = 11,
 }
 
 export interface PlaybackState {
   status: PlaybackStatus;
   isPlaying: boolean;
-  /** Current position in milliseconds */
   position: number;
-  /** Playback speed multiplier (1.0 = normal) */
   speed: number;
-  /** 0.0 – 1.0 */
   progress: number;
 }
-
-// ─── Palette Colors ───────────────────────────────────────────────────────────
 
 export interface PaletteColors {
   dominant: string;
@@ -52,10 +39,8 @@ export interface PaletteColors {
   muted: string;
   darkMuted: string;
   lightMuted: string;
-  onDarkVibrant: string; // text colour for darkVibrant bg
+  onDarkVibrant: string;
 }
-
-// ─── MusicBrainz API ─────────────────────────────────────────────────────────
 
 export interface MBRecording {
   id: string;
@@ -84,13 +69,4 @@ export interface MBSearchResult {
   offset: number;
 }
 
-// ─── Widget ───────────────────────────────────────────────────────────────────
-
 export type WidgetCommand = 'play' | 'pause' | 'skip_next' | 'skip_previous';
-
-// ─── Navigation ──────────────────────────────────────────────────────────────
-
-export type RootStackParamList = {
-  NowPlaying: undefined;
-  Permissions: undefined;
-};

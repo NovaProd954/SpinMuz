@@ -1,4 +1,4 @@
-package com.spinvault.widget
+package com.spinmuz.widget
 
 import android.content.Context
 import android.content.Intent
@@ -12,17 +12,19 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionSendBroadcast
+import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.layout.*
 import androidx.glance.text.*
-import com.spinvault.MainActivity
+import androidx.glance.unit.ColorProvider
+import com.spinmuz.MainActivity
 
 // ─── Intent action constants ──────────────────────────────────────────────────
 
-const val ACTION_PLAY          = "com.spinvault.widget.PLAY"
-const val ACTION_PAUSE         = "com.spinvault.widget.PAUSE"
-const val ACTION_SKIP_NEXT     = "com.spinvault.widget.SKIP_NEXT"
-const val ACTION_SKIP_PREVIOUS = "com.spinvault.widget.SKIP_PREVIOUS"
+const val ACTION_PLAY          = "com.spinmuz.widget.PLAY"
+const val ACTION_PAUSE         = "com.spinmuz.widget.PAUSE"
+const val ACTION_SKIP_NEXT     = "com.spinmuz.widget.SKIP_NEXT"
+const val ACTION_SKIP_PREVIOUS = "com.spinmuz.widget.SKIP_PREVIOUS"
 
 // ─── Widget data model (updated by WidgetUpdateService) ───────────────────────
 
@@ -87,7 +89,7 @@ fun WidgetContent(state: WidgetState, context: Context) {
                 Spacer(modifier = GlanceModifier.width(8.dp))
 
                 Text(
-                    text = "SpinVault",
+                    text = "SpinMuz",
                     style = TextStyle(
                         color      = ColorProvider(white.copy(alpha = 0.45f)),
                         fontSize   = 10.sp,

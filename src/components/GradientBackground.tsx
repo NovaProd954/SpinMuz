@@ -1,48 +1,68 @@
-import React, {useEffect, useRef} from 'react';
-import {StyleSheet, Animated} from 'react-native';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {Animated, StyleSheet, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {PaletteColors} from '../types';
-import {hexWithAlpha} from '../utils/colorUtils';
+import {darken} from '../utils/colorUtils';
 
 interface GradientBackgroundProps {
   palette: PaletteColors;
   children: React.ReactNode;
 }
 
-const GradientBackground: React.FC<GradientBackgroundProps> = ({palette, children}) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const prevColors = useRef<string[]>([]);
-
-  const colors = [
-    palette.darkMuted,
-    palette.darkVibrant,
-    hexWithAlpha(palette.dominant, 0.85),
-    palette.darkMuted,
-  ];
+const GradientBackground: React.FC<GradientBackgroundProps> = ({
+  palette,
+  children,
+}) => {
+  const colors = useMemo(
+    () => [
+      palette.darkMuted,
+      palette.darkVibrant,
+      darken(palette.dominant, 0.5),
+      palette.darkMuted,
+    ],
+    [palette.darkMuted, palette.darkVibrant, palette.dominant],
+  );
+  const [layers, setLayers] = useState({prev: colors, curr: colors});
+  const currRef = useRef(colors);
+  const fade = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (JSON.stringify(prevColors.current) !== JSON.stringify(colors)) {
-      fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 900,
-        useNativeDriver: true,
-      }).start();
-      prevColors.current = colors;
+    if (colors.join() === currRef.current.join()) {
+      return;
     }
-  });
+    setLayers({prev: currRef.current, curr: colors});
+    currRef.current = colors;
+    fade.setValue(0);
+    Animated.timing(fade, {
+      toValue: 1,
+      duration: 900,
+      useNativeDriver: true,
+    }).start();
+  }, [colors, fade]);
 
   return (
-    <LinearGradient
-      colors={colors}
-      locations={[0, 0.35, 0.7, 1]}
-      start={{x: 0.2, y: 0}}
-      end={{x: 0.8, y: 1}}
-      style={StyleSheet.absoluteFill}
-    >
+    <View style={styles.root}>
+      <LinearGradient
+        colors={layers.prev}
+        locations={[0, 0.35, 0.7, 1]}
+        start={{x: 0.2, y: 0}}
+        end={{x: 0.8, y: 1}}
+        style={StyleSheet.absoluteFill}
+      />
+      <Animated.View style={[StyleSheet.absoluteFill, {opacity: fade}]}>
+        <LinearGradient
+          colors={layers.curr}
+          locations={[0, 0.35, 0.7, 1]}
+          start={{x: 0.2, y: 0}}
+          end={{x: 0.8, y: 1}}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
       {children}
-    </LinearGradient>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({root: {flex: 1, backgroundColor: '#111111'}});
 
 export default GradientBackground;

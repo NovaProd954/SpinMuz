@@ -18,18 +18,25 @@ const SongInfo: React.FC<SongInfoProps> = ({track, palette}) => {
       <Text style={[styles.artist, {color: sub}]} numberOfLines={1}>
         {track.artist}
       </Text>
-      <Text style={[styles.album, {color: sub}]} numberOfLines={1}>
-        {track.album}
-      </Text>
+      {track.album ? (
+        <Text style={[styles.album, {color: sub}]} numberOfLines={1}>
+          {track.album}
+        </Text>
+      ) : null}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {alignItems: 'center', paddingHorizontal: 24, gap: 4},
-  title:  {fontSize: 22, fontWeight: '700', letterSpacing: 0.2, textAlign: 'center'},
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    textAlign: 'center',
+  },
   artist: {fontSize: 15, fontWeight: '500', textAlign: 'center'},
-  album:  {fontSize: 13, fontWeight: '400', textAlign: 'center', opacity: 0.75},
+  album: {fontSize: 13, fontWeight: '400', textAlign: 'center', opacity: 0.75},
 });
 
 export default memo(SongInfo);
