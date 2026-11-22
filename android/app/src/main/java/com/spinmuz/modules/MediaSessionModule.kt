@@ -173,7 +173,8 @@ class MediaSessionModule(
         sync(list ?: emptyList())
     }
 
-    private fun sync(list: List<MediaController>) {
+    private fun sync(all: List<MediaController>) {
+        val list = all.filter { it.packageName != reactContext.packageName }
         val tokens = list.map { it.sessionToken }.toSet()
         registered.keys.filter { it !in tokens }.forEach { token ->
             registered.remove(token)?.let { (ctrl, cb) -> ctrl.unregisterCallback(cb) }
@@ -226,6 +227,7 @@ class MediaSessionModule(
             putString("artist", artist)
             putString("album", meta.getString(MediaMetadata.METADATA_KEY_ALBUM) ?: "")
             putDouble("duration", meta.getLong(MediaMetadata.METADATA_KEY_DURATION).toDouble())
+            putString("source", "system")
         }
         emit("onMediaMetadata", map)
         WidgetUpdateService.updateState(
@@ -252,6 +254,7 @@ class MediaSessionModule(
             putInt("state", state?.state ?: PlaybackState.STATE_NONE)
             putDouble("position", position.coerceAtLeast(0L).toDouble())
             putDouble("speed", (state?.playbackSpeed ?: 1f).toDouble())
+            putString("source", "system")
         }
         emit("onPlaybackState", map)
         WidgetUpdateService.updateState(reactContext.applicationContext, isPlaying = playing)

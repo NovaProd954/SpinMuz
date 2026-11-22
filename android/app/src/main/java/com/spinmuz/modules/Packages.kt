@@ -7,7 +7,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class SpinMuzPackage : ReactPackage {
     override fun createNativeModules(ctx: ReactApplicationContext): List<NativeModule> =
-        listOf(MediaSessionModule(ctx), PaletteModule(ctx))
+        listOf(MediaSessionModule(ctx), PaletteModule(ctx), LibraryModule(ctx))
 
     override fun createViewManagers(ctx: ReactApplicationContext): List<ViewManager<*, *>> =
         emptyList()

@@ -28,12 +28,15 @@ interface NativeMetadataEvent {
   artist?: string;
   album?: string;
   duration?: number;
+  artworkUri?: string;
+  source?: string;
 }
 
 interface NativePlaybackEvent {
-  state: number; // Maps to PlaybackStatus enum values
+  state: number;
   position: number;
   speed: number;
+  source?: string;
 }
 
 // ─── Typed listeners ──────────────────────────────────────────────────────────

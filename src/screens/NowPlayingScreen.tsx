@@ -24,7 +24,11 @@ import {computeStageLayout} from '../utils/stageLayout';
 
 const TOP_INSET = StatusBar.currentHeight ?? 0;
 
-const NowPlayingScreen: React.FC = () => {
+interface NowPlayingScreenProps {
+  onOpenLibrary: () => void;
+}
+
+const NowPlayingScreen: React.FC<NowPlayingScreenProps> = ({onOpenLibrary}) => {
   const {width, height} = useWindowDimensions();
   const layout = useMemo(
     () => computeStageLayout(width, height),
@@ -35,6 +39,7 @@ const NowPlayingScreen: React.FC = () => {
     track,
     playback,
     hasPermission,
+    localActive,
     isLoading,
     requestPermission,
     sendCommand,
@@ -57,7 +62,7 @@ const NowPlayingScreen: React.FC = () => {
     }
   }, [hasPermission, palette.darkMuted, palette.vibrant]);
 
-  if (!hasPermission) {
+  if (!hasPermission && !localActive) {
     return (
       <GradientBackground palette={DEFAULT_PALETTE}>
         <StatusBar
@@ -68,13 +73,18 @@ const NowPlayingScreen: React.FC = () => {
         <View style={styles.permissionScreen}>
           <Text style={styles.permTitle}>SpinMuz</Text>
           <Text style={styles.permBody}>
-            SpinMuz needs Notification Access to read what your music app is
-            playing.
+            Play the music stored on your phone, or let SpinMuz follow what
+            another music app is playing.
           </Text>
           <TouchableOpacity
             style={[styles.permBtn, {backgroundColor: DEFAULT_PALETTE.vibrant}]}
+            onPress={onOpenLibrary}>
+            <Text style={styles.permBtnText}>Open My Music</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.permBtnAlt}
             onPress={requestPermission}>
-            <Text style={styles.permBtnText}>Grant Access</Text>
+            <Text style={styles.permBtnText}>Follow Other Apps</Text>
           </TouchableOpacity>
           <Text style={styles.permHint}>
             Installed from an APK and the switch is greyed out? Open App info,
@@ -116,6 +126,12 @@ const NowPlayingScreen: React.FC = () => {
               },
             ]}
           />
+          <TouchableOpacity style={styles.libraryBtn} onPress={onOpenLibrary}>
+            <Text
+              style={[styles.libraryBtnText, {color: palette.onDarkVibrant}]}>
+              Library
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={{width: layout.width, height: layout.height}}>
@@ -201,6 +217,21 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   permBtn: {paddingHorizontal: 32, paddingVertical: 14, borderRadius: 28},
+  permBtnAlt: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  libraryBtn: {
+    position: 'absolute',
+    right: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  libraryBtnText: {fontSize: 12, fontWeight: '600', letterSpacing: 1},
   permBtnText: {color: '#fff', fontWeight: '700', fontSize: 16},
   permHint: {
     fontSize: 12,

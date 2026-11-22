@@ -1,6 +1,7 @@
 package com.spinmuz.modules
 
 import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.palette.graphics.Palette
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -25,12 +26,17 @@ class PaletteModule(
         executor.execute {
             var conn: HttpURLConnection? = null
             try {
-                conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 8000
-                    readTimeout = 8000
-                    instanceFollowRedirects = true
+                val bitmap = if (url.startsWith("file:")) {
+                    BitmapFactory.decodeFile(Uri.parse(url).path)
+                } else {
+                    val c = (URL(url).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 8000
+                        readTimeout = 8000
+                        instanceFollowRedirects = true
+                    }
+                    conn = c
+                    c.inputStream.use { BitmapFactory.decodeStream(it) }
                 }
-                val bitmap = conn.inputStream.use { BitmapFactory.decodeStream(it) }
                 if (bitmap == null) {
                     promise.reject("DECODE_FAILED", "Could not decode bitmap")
                     return@execute

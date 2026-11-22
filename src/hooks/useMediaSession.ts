@@ -1,7 +1,13 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {AppState, AppStateStatus, Platform} from 'react-native';
-import {PlaybackState, PlaybackStatus, TrackMetadata} from '../types';
+import {
+  PlaybackState,
+  PlaybackStatus,
+  TrackMetadata,
+  WidgetCommand,
+} from '../types';
 import mediaSessionBridge from '../services/MediaSessionBridge';
+import libraryBridge from '../services/LibraryBridge';
 import musicBrainzService from '../services/MusicBrainzService';
 
 export const DEFAULT_TRACK: TrackMetadata = {
@@ -36,6 +42,7 @@ export function useMediaSession() {
   const [playback, setPlayback] = useState<PlaybackState>(DEFAULT_PLAYBACK);
   const [hasPermission, setHasPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [localActive, setLocalActive] = useState(false);
 
   const durationRef = useRef(0);
   const statusRef = useRef<PlaybackStatus>(PlaybackStatus.None);
@@ -47,6 +54,7 @@ export function useMediaSession() {
   });
   const keyRef = useRef('');
   const requestRef = useRef(0);
+  const sourceRef = useRef<'local' | 'system'>('system');
 
   const refreshPosition = useCallback(() => {
     const a = anchorRef.current;
@@ -82,10 +90,11 @@ export function useMediaSession() {
   }, [checkPermission]);
 
   useEffect(() => {
-    if (!hasPermission) {
-      return;
-    }
     return mediaSessionBridge.onMetadata(event => {
+      if (event.source === 'local') {
+        setLocalActive(true);
+      }
+      const artworkUri = event.artworkUri ?? null;
       const title = event.title ?? '';
       const artist = event.artist ?? '';
       const album = event.album ?? '';
@@ -103,7 +112,11 @@ export function useMediaSession() {
 
       const key = `${title}::${artist}::${album}`.toLowerCase();
       if (key === keyRef.current) {
-        setTrack(prev => ({...prev, duration: duration || prev.duration}));
+        setTrack(prev => ({
+          ...prev,
+          duration: duration || prev.duration,
+          artworkUrl: artworkUri ?? prev.artworkUrl,
+        }));
         refreshPosition();
         return;
       }
@@ -116,6 +129,7 @@ export function useMediaSession() {
         artist: artist || DEFAULT_TRACK.artist,
         album,
         duration,
+        artworkUrl: artworkUri,
       });
       refreshPosition();
 
@@ -128,7 +142,11 @@ export function useMediaSession() {
         .resolve(title, artist, album || undefined)
         .then(resolved => {
           if (requestRef.current === request) {
-            setTrack({...resolved, duration: duration || resolved.duration});
+            setTrack(prev => ({
+              ...resolved,
+              duration: duration || resolved.duration,
+              artworkUrl: prev.artworkUrl ?? resolved.artworkUrl,
+            }));
           }
         })
         .catch(() => {})
@@ -138,13 +156,16 @@ export function useMediaSession() {
           }
         });
     });
-  }, [hasPermission, refreshPosition]);
+  }, [refreshPosition]);
 
   useEffect(() => {
-    if (!hasPermission) {
-      return;
-    }
     return mediaSessionBridge.onPlaybackState(event => {
+      if (event.source === 'local') {
+        sourceRef.current = 'local';
+        setLocalActive(true);
+      } else {
+        sourceRef.current = 'system';
+      }
       statusRef.current = event.state as PlaybackStatus;
       anchorRef.current = {
         position: event.position,
@@ -154,7 +175,11 @@ export function useMediaSession() {
       };
       refreshPosition();
     });
-  }, [hasPermission, refreshPosition]);
+  }, [refreshPosition]);
+
+  useEffect(() => {
+    libraryBridge.sync();
+  }, []);
 
   useEffect(() => {
     if (!hasPermission) {
@@ -198,17 +223,23 @@ export function useMediaSession() {
     return () => sub.remove();
   }, [checkPermission]);
 
-  const sendCommand = useCallback(
-    (cmd: 'play' | 'pause' | 'skip_next' | 'skip_previous') => {
+  const sendCommand = useCallback((cmd: WidgetCommand) => {
+    if (sourceRef.current === 'local') {
+      libraryBridge.sendCommand(cmd).then(ok => {
+        if (!ok) {
+          mediaSessionBridge.sendCommand(cmd);
+        }
+      });
+    } else {
       mediaSessionBridge.sendCommand(cmd);
-    },
-    [],
-  );
+    }
+  }, []);
 
   return {
     track,
     playback,
     hasPermission,
+    localActive,
     isLoading,
     requestPermission,
     sendCommand,
