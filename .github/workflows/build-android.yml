@@ -71,8 +71,10 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          sed -n '/^FAILURE:/,$p' build.log | grep -v '^$' | head -70 | while IFS= read -r l; do echo "::error::${l:0:900}"; done
-          grep -E '^e: ' build.log | head -30 | while IFS= read -r l; do echo "::error::${l:0:900}"; done
+          E=$(grep -E '^e: ' build.log | head -40 | sed 's#file:///home/runner/work/SpinMuz/SpinMuz/android/app/src/main/java/com/spinmuz/##' | awk '{printf "%s%%0A", substr($0,1,400)}')
+          echo "::error title=Kotlin errors::${E:-none}"
+          F=$(sed -n '/^FAILURE:/,$p' build.log | grep -v '^$' | head -12 | awk '{printf "%s%%0A", substr($0,1,300)}')
+          echo "::error title=Gradle failure::${F:-none}"
 
       - name: Rename APK
         run: cp android/app/build/outputs/apk/release/app-release.apk "SpinMuz-v$VERSION.apk"
