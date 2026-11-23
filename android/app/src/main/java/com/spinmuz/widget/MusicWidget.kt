@@ -84,7 +84,7 @@ fun WidgetContent(state: WidgetState, context: Context) {
                         .size(8.dp)
                         .cornerRadius(4.dp)
                         .background(if (state.isPlaying) accent else Color.Gray),
-                )
+                ) {}
 
                 Spacer(modifier = GlanceModifier.width(8.dp))
 
